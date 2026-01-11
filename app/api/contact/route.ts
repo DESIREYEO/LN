@@ -1,0 +1,190 @@
+import { NextResponse } from 'next/server';
+import nodemailer from 'nodemailer';
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const { name, email, service, message } = body;
+
+    // Validation des champs
+    if (!name || !email || !service || !message) {
+      return NextResponse.json(
+        { error: 'Tous les champs sont requis' },
+        { status: 400 }
+      );
+    }
+
+    // Validation de l'email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return NextResponse.json(
+        { error: 'Email invalide' },
+        { status: 400 }
+      );
+    }
+
+    // Configuration de Nodemailer avec Gmail
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASSWORD
+      }
+    });
+
+    // Mapper les services vers leurs noms complets
+    const serviceNames: Record<string, string> = {
+      web: 'Développement Web',
+      mobile: 'Développement Mobile',
+      ia: 'Automatisme IA',
+      communication: 'Communication Digitale'
+    };
+
+    const serviceName = serviceNames[service] || service;
+
+    // Configuration de l'email
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: 'lettrenumeriquetech@gmail.com',
+      subject: `🚀 Nouveau message de ${name} - ${serviceName}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body {
+              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+              line-height: 1.6;
+              color: #333;
+              max-width: 600px;
+              margin: 0 auto;
+              padding: 20px;
+            }
+            .header {
+              background: linear-gradient(135deg, #4CAF50 0%, #FFA726 100%);
+              color: white;
+              padding: 30px;
+              border-radius: 10px 10px 0 0;
+              text-align: center;
+            }
+            .header h1 {
+              margin: 0;
+              font-size: 24px;
+            }
+            .content {
+              background: #ffffff;
+              border: 2px solid #f0f0f0;
+              border-top: none;
+              padding: 30px;
+              border-radius: 0 0 10px 10px;
+            }
+            .info-box {
+              background: #f9fafb;
+              border-left: 4px solid #4CAF50;
+              padding: 15px 20px;
+              margin: 20px 0;
+              border-radius: 5px;
+            }
+            .info-box p {
+              margin: 8px 0;
+            }
+            .info-label {
+              font-weight: bold;
+              color: #4CAF50;
+              display: inline-block;
+              min-width: 80px;
+            }
+            .message-box {
+              background: #ffffff;
+              border: 2px solid #e5e7eb;
+              padding: 20px;
+              margin: 20px 0;
+              border-radius: 8px;
+              min-height: 100px;
+            }
+            .message-label {
+              font-weight: bold;
+              color: #374151;
+              margin-bottom: 10px;
+              display: block;
+              font-size: 16px;
+            }
+            .message-text {
+              color: #4b5563;
+              line-height: 1.8;
+            }
+            .footer {
+              text-align: center;
+              color: #9ca3af;
+              font-size: 12px;
+              margin-top: 30px;
+              padding-top: 20px;
+              border-top: 1px solid #e5e7eb;
+            }
+            .badge {
+              display: inline-block;
+              background: #22c55e;
+              color: white;
+              padding: 5px 15px;
+              border-radius: 20px;
+              font-size: 12px;
+              font-weight: bold;
+              margin-top: 10px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>✉️ Nouveau Message Portfolio</h1>
+            <div class="badge">${serviceName}</div>
+          </div>
+          
+          <div class="content">
+            <div class="info-box">
+              <p><span class="info-label">Nom:</span> ${name}</p>
+              <p><span class="info-label">Email:</span> <a href="mailto:${email}" style="color: #4CAF50; text-decoration: none;">${email}</a></p>
+              <p><span class="info-label">Service:</span> ${serviceName}</p>
+            </div>
+            
+            <div class="message-box">
+              <span class="message-label">💬 Message:</span>
+              <p class="message-text">${message.replace(/\n/g, '<br>')}</p>
+            </div>
+            
+            <div style="text-align: center; margin-top: 30px;">
+              <a href="mailto:${email}" style="display: inline-block; background: linear-gradient(135deg, #4CAF50 0%, #FFA726 100%); color: white; padding: 12px 30px; text-decoration: none; border-radius: 25px; font-weight: bold;">
+                📧 Répondre à ${name}
+              </a>
+            </div>
+          </div>
+          
+          <div class="footer">
+            <p>Ce message a été envoyé depuis le formulaire de contact de votre portfolio</p>
+            <p>Date: ${new Date().toLocaleString('fr-FR', { 
+              dateStyle: 'full', 
+              timeStyle: 'short' 
+            })}</p>
+          </div>
+        </body>
+        </html>
+      `,
+      replyTo: email
+    };
+
+    // Envoi de l'email
+    await transporter.sendMail(mailOptions);
+
+    return NextResponse.json(
+      { success: true, message: 'Message envoyé avec succès' },
+      { status: 200 }
+    );
+
+  } catch (error) {
+    console.error('Erreur lors de l\'envoi de l\'email:', error);
+    return NextResponse.json(
+      { error: 'Erreur lors de l\'envoi du message. Veuillez réessayer.' },
+      { status: 500 }
+    );
+  }
+}
